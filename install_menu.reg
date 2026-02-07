@@ -1,0 +1,35 @@
+Windows Registry Editor Version 5.00
+
+; 1. Create the Main Menu Item
+[HKEY_CLASSES_ROOT\SystemFileAssociations\image\shell\WhiteBG]
+"MUIVerb"="White Background Maker"
+"SubCommands"=""
+"Icon"="C:\\Users\\Anosh\\Documents\\STUDIES\\C\\Projects\\White BackGround\\whitebg.exe"
+
+; 2. Option A: Default (Threshold 80)
+[HKEY_CLASSES_ROOT\SystemFileAssociations\image\shell\WhiteBG\shell\01Default]
+@="Default (Threshold 80)"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\image\shell\WhiteBG\shell\01Default\command]
+@="\"C:\\Users\\Anosh\\Documents\\STUDIES\\C\\Projects\\White BackGround\\whitebg.exe\" \"%1\""
+
+; 3. Option B: Gentle (Threshold 30)
+[HKEY_CLASSES_ROOT\SystemFileAssociations\image\shell\WhiteBG\shell\02Gentle]
+@="Gentle (Threshold 30)"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\image\shell\WhiteBG\shell\02Gentle\command]
+@="\"C:\\Users\\Anosh\\Documents\\STUDIES\\C\\Projects\\White BackGround\\whitebg.exe\" \"%1\" 30"
+
+; 4. Option C: Aggressive (Threshold 120)
+[HKEY_CLASSES_ROOT\SystemFileAssociations\image\shell\WhiteBG\shell\03Strong]
+@="Aggressive (Threshold 120)"
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\image\shell\WhiteBG\shell\03Strong\command]
+@="\"C:\\Users\\Anosh\\Documents\\STUDIES\\C\\Projects\\White BackGround\\whitebg.exe\" \"%1\" 120"
+
+; 5. Option D: Custom Input (Sequential Prompts)
+[HKEY_CLASSES_ROOT\SystemFileAssociations\image\shell\WhiteBG\shell\04Custom]
+@="Custom Settings..."
+
+[HKEY_CLASSES_ROOT\SystemFileAssociations\image\shell\WhiteBG\shell\04Custom\command]
+@="cmd /V:ON /C \"set /p th=Enter Threshold (e.g. 50): && set /p qu=Enter Quality (1-100): && \"C:\\Users\\Anosh\\Documents\\STUDIES\\C\\Projects\\White BackGround\\whitebg.exe\" \"%1\" !th! !qu!\""
