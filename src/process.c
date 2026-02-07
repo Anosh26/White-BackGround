@@ -37,7 +37,7 @@ void set_pixel_white(unsigned char *img, int index, int channels) {
 
 // --- CORE ALGORITHMS ---
 
-// 1. Flood Fill with Center Guard + Saturation Shield
+// 1. Flood Fill with Center Guard + Saturation + Uniformity Shield
 void flood_fill_background(unsigned char *img, unsigned char *visited, int width, int height, int channels, 
                            unsigned char bg_r, unsigned char bg_g, unsigned char bg_b, double threshold) {
     Queue* q = createQueue();
@@ -77,12 +77,11 @@ void flood_fill_background(unsigned char *img, unsigned char *visited, int width
                     // --- SUBJECT PROTECTION LOGIC ---
                     int in_safe_zone = (nx > safe_x_min && nx < safe_x_max && ny > safe_y_min);
                     
-                    // 1. SATURATION SHIELD: If pixel has high saturation (colorful subject)
-                    //    and is inside the frame, PROTECT IT.
-                    // 
-                    // KEY IMPROVEMENT: This works even with red/yellow color cast because
-                    // saturation measures RGB variance, not specific color values.
-                    if (in_safe_zone && is_likely_subject(img[idx], img[idx+1], img[idx+2])) {
+                    // 1. SATURATION + UNIFORMITY SHIELD
+                    // Now checks BOTH saturation AND uniformity
+                    // - Solid red background: High saturation, LOW uniformity variance → NOT protected
+                    // - Human face: High saturation, HIGH uniformity variance → PROTECTED
+                    if (in_safe_zone && is_likely_subject(img, nx, ny, width, height, channels)) {
                         // Skip this pixel. Do NOT queue it. Do NOT turn it white.
                         continue; 
                     }
@@ -118,9 +117,9 @@ void remove_isolated_islands(unsigned char *img, unsigned char *visited, int wid
             if (visited[v_index] == 0) { 
                 int idx = IDX(x, y, width, channels);
                 
-                // SATURATION CHECK: Don't remove islands if they're part of the subject
+                // SATURATION + UNIFORMITY CHECK
                 // This prevents holes in the face/body if the flood fill missed a spot.
-                if (is_likely_subject(img[idx], img[idx+1], img[idx+2])) continue;
+                if (is_likely_subject(img, x, y, width, height, channels)) continue;
 
                 double dist = color_distance(img[idx], img[idx+1], img[idx+2], bg_r, bg_g, bg_b);
                 if (dist < strict_threshold) {
@@ -149,9 +148,10 @@ void erode_hair_edges(unsigned char *img, unsigned char *visited, int width, int
                     if (has_visited_neighbor(x, y, width, height, visited)) {
                         int idx = IDX(x, y, width, channels);
 
-                        // SATURATION PROTECTION: Do not erode pixels that are part of the subject.
+                        // SATURATION + UNIFORMITY PROTECTION
+                        // Do not erode pixels that are part of the subject.
                         // This preserves the chin, cheek edges, and clothing boundaries.
-                        if (is_likely_subject(img[idx], img[idx+1], img[idx+2])) continue;
+                        if (is_likely_subject(img, x, y, width, height, channels)) continue;
 
                         double dist = color_distance(img[idx], img[idx+1], img[idx+2], bg_r, bg_g, bg_b);
                         if (dist < (threshold * 1.4)) {

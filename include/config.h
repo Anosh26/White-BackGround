@@ -7,6 +7,7 @@
 #define COLOR_THRESHOLD 80.0 
 
 // --- SUBJECT DETECTION SETTINGS ---
+
 // Minimum saturation (RGB variance) to consider a pixel as part of the subject
 // Formula: max(R,G,B) - min(R,G,B)
 // 
@@ -16,7 +17,22 @@
 //   - High (23-30): Stricter, may remove dark hair edges or shadows
 // 
 // Default: 18 (works well for scanned passport photos with color cast)
-#define SUBJECT_SATURATION_THRESHOLD 20
+#define SUBJECT_SATURATION_THRESHOLD 18
+
+// Maximum color variance in a 3x3 neighborhood to be considered "uniform"
+// Uniform regions are solid backgrounds (even if colorful like red/blue)
+// 
+// How it works:
+//   - Solid red background: Neighbors are all similar → variance < 15 → uniform → removed
+//   - Human face/clothes: Skin texture, shadows → variance > 15 → NOT uniform → protected
+// 
+// Values:
+//   - Low (8-12): Stricter, only very solid backgrounds are uniform
+//   - Medium (13-18): Balanced, recommended for solid colored backgrounds
+//   - High (19-25): Looser, may incorrectly mark textured backgrounds as uniform
+// 
+// Default: 15 (distinguishes solid backgrounds from textured subjects)
+#define UNIFORMITY_THRESHOLD 15
 
 // --- OUTPUT SETTINGS ---
 // Quality of the saved JPG (1-100)
