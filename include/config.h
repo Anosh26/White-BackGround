@@ -16,7 +16,7 @@
 //   - High (23-30): Stricter, may remove dark hair edges or shadows
 // 
 // Default: 18 (works well for scanned passport photos with color cast)
-#define SUBJECT_SATURATION_THRESHOLD 18
+#define SUBJECT_SATURATION_THRESHOLD 20
 
 // --- OUTPUT SETTINGS ---
 // Quality of the saved JPG (1-100)
