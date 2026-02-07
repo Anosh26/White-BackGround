@@ -11,10 +11,10 @@
 
 double color_distance(unsigned char r1, unsigned char g1, unsigned char b1,
                       unsigned char r2, unsigned char g2, unsigned char b2) {
+    // Standard Euclidean Distance
     return sqrt(pow(r1 - r2, 2) + pow(g1 - g2, 2) + pow(b1 - b2, 2));
 }
 
-// Checks if a pixel has a neighbor that has already been removed (visited)
 int has_visited_neighbor(int x, int y, int width, int height, unsigned char *visited) {
     int dx[] = {0, 0, -1, 1};
     int dy[] = {-1, 1, 0, 0};
@@ -28,7 +28,6 @@ int has_visited_neighbor(int x, int y, int width, int height, unsigned char *vis
     return 0;
 }
 
-// Helper to paint a pixel white
 void set_pixel_white(unsigned char *img, int index, int channels) {
     img[index]     = TARGET_R; 
     img[index + 1] = TARGET_G;
@@ -36,22 +35,26 @@ void set_pixel_white(unsigned char *img, int index, int channels) {
     if (channels == 4) img[index + 3] = 255;
 }
 
-// --- CORE FUNCTIONS ---
+// --- CORE ALGORITHMS ---
 
-// 1. Main Flood Fill (Starts from all 4 corners to catch more background)
+// 1. Flood Fill with "Center Guard" (Lightweight Body Detection)
 void flood_fill_background(unsigned char *img, unsigned char *visited, int width, int height, int channels, 
                            unsigned char bg_r, unsigned char bg_g, unsigned char bg_b, double threshold) {
     Queue* q = createQueue();
     
-    // Start from all 4 corners (Top-Left, Top-Right, Bot-Left, Bot-Right)
+    // Start from 4 corners
     int start_points[4][2] = {{0,0}, {width-1, 0}, {0, height-1}, {width-1, height-1}};
-    
     for(int i=0; i<4; i++) {
-        int x = start_points[i][0];
-        int y = start_points[i][1];
-        enqueue(q, x, y);
-        visited[y * width + x] = 1;
+        enqueue(q, start_points[i][0], start_points[i][1]);
+        visited[start_points[i][1] * width + start_points[i][0]] = 1;
     }
+
+    // DEFINE SAFE ZONE (Passport Standard)
+    // The "Body" is typically in the middle horizontal 50% and lower vertical 70%
+    int safe_x_min = width * 0.25; 
+    int safe_x_max = width * 0.75;
+    int safe_y_min = height * 0.20; // Start protecting from the neck down (approx)
+    int safe_y_max = height;
 
     int dx[] = {0, 0, -1, 1};
     int dy[] = {-1, 1, 0, 0};
@@ -74,7 +77,16 @@ void flood_fill_background(unsigned char *img, unsigned char *visited, int width
                     int idx = IDX(nx, ny, width, channels);
                     double dist = color_distance(img[idx], img[idx+1], img[idx+2], bg_r, bg_g, bg_b);
 
-                    if (dist < threshold) {
+                    // --- DYNAMIC THRESHOLD LOGIC ---
+                    double effective_threshold = threshold;
+
+                    // If we are in the "Body Zone", be SUPER strict.
+                    // This prevents bleeding into a white shirt.
+                    if (nx > safe_x_min && nx < safe_x_max && ny > safe_y_min) {
+                        effective_threshold = threshold * 0.3; // 70% Stricter
+                    }
+
+                    if (dist < effective_threshold) {
                         enqueue(q, nx, ny);
                         visited[v_index] = 1;
                     }
@@ -85,22 +97,19 @@ void flood_fill_background(unsigned char *img, unsigned char *visited, int width
     freeQueue(q);
 }
 
-// 2. Island Removal (Fixes the gaps inside arms/hair loops)
+// 2. Island Removal
 void remove_isolated_islands(unsigned char *img, unsigned char *visited, int width, int height, int channels, 
                              unsigned char bg_r, unsigned char bg_g, unsigned char bg_b, double threshold) {
-    // We use a stricter threshold (0.9x) to avoid deleting parts of the shirt that look like the wall
     double strict_threshold = threshold * 0.9; 
-
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
             int v_index = y * width + x;
-            
-            // If the pixel was NOT reached by the flood fill...
             if (visited[v_index] == 0) { 
                 int idx = IDX(x, y, width, channels);
                 double dist = color_distance(img[idx], img[idx+1], img[idx+2], bg_r, bg_g, bg_b);
-
-                // ...but it looks exactly like the background? It's an island!
+                
+                // Note: We don't use Safe Zone here because Islands are usually 
+                // "Trapped background" (like between arm and body), which we WANT to remove.
                 if (dist < strict_threshold) {
                     set_pixel_white(img, idx, channels);
                     visited[v_index] = 1; 
@@ -110,31 +119,24 @@ void remove_isolated_islands(unsigned char *img, unsigned char *visited, int wid
     }
 }
 
-// 3. Edge Erosion (Fixes the colored halo/outline around hair)
+// 3. Edge Erosion
 void erode_hair_edges(unsigned char *img, unsigned char *visited, int width, int height, int channels, 
                       unsigned char bg_r, unsigned char bg_g, unsigned char bg_b, double threshold) {
-    int passes = 2; // How many pixels deep to eat
-    
+    int passes = 2; 
     int *to_remove_x = malloc(width * height * sizeof(int));
     int *to_remove_y = malloc(width * height * sizeof(int));
-
-    if (!to_remove_x || !to_remove_y) return; 
+    if (!to_remove_x || !to_remove_y) return;
 
     for (int pass = 0; pass < passes; pass++) {
         int remove_count = 0;
-
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 int v_index = y * width + x;
-                
-                // If it is part of the SUBJECT (not visited)...
                 if (visited[v_index] == 0) {
-                    // ...but it touches the WHITE background...
                     if (has_visited_neighbor(x, y, width, height, visited)) {
                         int idx = IDX(x, y, width, channels);
                         double dist = color_distance(img[idx], img[idx+1], img[idx+2], bg_r, bg_g, bg_b);
-                        
-                        // ...and is somewhat similar to the background (Loose threshold 1.4x)
+                        // Relaxed threshold for edges to eat halos
                         if (dist < (threshold * 1.4)) {
                             to_remove_x[remove_count] = x;
                             to_remove_y[remove_count] = y;
@@ -144,8 +146,6 @@ void erode_hair_edges(unsigned char *img, unsigned char *visited, int width, int
                 }
             }
         }
-
-        // Apply removals for this pass
         for (int k = 0; k < remove_count; k++) {
             int rx = to_remove_x[k];
             int ry = to_remove_y[k];
@@ -153,7 +153,6 @@ void erode_hair_edges(unsigned char *img, unsigned char *visited, int width, int
             visited[ry * width + rx] = 1;
         }
     }
-
     free(to_remove_x);
     free(to_remove_y);
 }
@@ -167,13 +166,8 @@ void remove_background(unsigned char *img, int width, int height, int channels, 
     unsigned char *visited = (unsigned char *)calloc(width * height, sizeof(unsigned char));
     if (!visited) return;
 
-    // Phase 1: Main Flood Fill
     flood_fill_background(img, visited, width, height, channels, bg_r, bg_g, bg_b, threshold);
-
-    // Phase 2: Clean up isolated gaps
     remove_isolated_islands(img, visited, width, height, channels, bg_r, bg_g, bg_b, threshold);
-
-    // Phase 3: Smooth the edges
     erode_hair_edges(img, visited, width, height, channels, bg_r, bg_g, bg_b, threshold);
 
     free(visited);
