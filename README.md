@@ -16,25 +16,6 @@ I built this tool to solve those problems:
 * **Libraries:** `stb_image` & `stb_image_write` (Single-header libraries for image processing)
 * **Algorithm:** Custom **Flood Fill (Breadth-First Search)** for smart edge detection and background removal.
 * **Integration:** Windows Registry (`.reg`) for Context Menu integration.
-
-# White Background Maker 📸
-
-A lightweight, high-performance C application designed to automatically convert image backgrounds to white. Specifically optimized for **Passport Size Photographs** and ID cards.
-
-## 🚀 Why This Exists
-Most background removal tools are heavy, require internet access, or use complex AI models that are overkill for simple tasks.
-
-I built this tool to solve those problems:
-* **Fast:** Runs instantly on your CPU using optimized algorithms.
-* **Offline:** No API calls, no cloud uploads, no subscription fees.
-* **Integrated:** Works directly from the **Windows Right-Click Menu** for a seamless workflow.
-* **Specific:** Optimized for passport photos where the subject is centered and the background is solid (blue/green/white).
-
-## 🛠️ Tech Stack
-* **Language:** C (Standard C99)
-* **Libraries:** `stb_image` & `stb_image_write` (Single-header libraries for image processing)
-* **Algorithm:** Custom **Flood Fill (Breadth-First Search)** for smart edge detection and background removal.
-* **Integration:** Windows Registry (`.reg`) for Context Menu integration.
 ### Part 3: Usage Instructions (Windows & CLI)
 ## 💻 How to Use
 
